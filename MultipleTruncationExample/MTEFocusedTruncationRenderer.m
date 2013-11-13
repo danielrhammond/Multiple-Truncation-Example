@@ -201,7 +201,12 @@
         intersectionRange = NSIntersectionRange(targetRange, range);
     }
     
-    NSInteger BUFFER_LEN = 1; // ??????
+    /*
+     This value this is set to is never seen in the video, not really sure what a reasonable value would be. If you're using this code in an app you really should
+     profile this and tweak this value.
+     */
+    
+    NSInteger BUFFER_LEN = 100;
     if (intersectionRange.length > 0) {
         CGGlyph glyphBuffer[BUFFER_LEN];
         NSGlyphProperty propBuffer[BUFFER_LEN];
