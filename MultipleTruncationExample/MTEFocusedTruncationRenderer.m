@@ -50,8 +50,8 @@
      carefully didn't show or there is another fix for this somewhere else in the code that isn't visible
      */
     
-    [self.layoutManager invalidateGlyphsForCharacterRange:(NSRange){ 0, length } changeInLength:0 actualCharacterRange:NULL];
-    [self.layoutManager ensureLayoutForCharacterRange:(NSRange){ 0, length }];
+    [self invalidateGlyphMappings];
+    [self forceLayout];
     
     self.textContainer.size = (CGSize){ CGRectGetWidth(rect), CGRectGetHeight(rect) };
     _truncationRange = (NSRange){ 0, 0 };
@@ -83,14 +83,12 @@
              with the truncated range always true
              */
             
-            NSRange tailTruncatedCharacterRange;
-            
             self.textContainer.size = bounds.size;
             
             if (focusedRange.length > 0) {
                 NSUInteger location = [self.layoutManager glyphIndexForCharacterAtIndex:focusedRange.location];
                 NSRange glyphRange = [self.layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:location];
-                tailTruncatedCharacterRange = [self.layoutManager characterRangeForGlyphRange:glyphRange actualGlyphRange:NULL];
+                NSRange tailTruncatedCharacterRange = [self.layoutManager characterRangeForGlyphRange:glyphRange actualGlyphRange:NULL];
                 
                 if (NSIntersectionRange((NSRange){ 0, NSMaxRange(focusedRange) }, tailTruncatedCharacterRange).length > 0) {
                     // Focused range is truncated out
@@ -104,24 +102,24 @@
                         while ((_truncationRange.location > 0) && (NSIntersectionRange(focusedRange, tailTruncatedCharacterRange).length > 0)) {
                             _truncationRange.location = [string rangeOfComposedCharacterSequenceAtIndex:(_truncationRange.location - 1)].location;
                             _truncationRange.length = focusedRange.location - _truncationRange.location;
-                            [self.layoutManager invalidateGlyphsForCharacterRange:(NSRange){ 0, length } changeInLength:0 actualCharacterRange:NULL];
-                            [self.layoutManager ensureLayoutForCharacterRange:(NSRange){ 0, length }];
+                            [self invalidateGlyphMappings];
+                            [self forceLayout];
                             NSUInteger location = [self.layoutManager glyphIndexForCharacterAtIndex:focusedRange.location];
                             NSRange truncatedGlyphRange = [self.layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:location];
                             tailTruncatedCharacterRange = [self.layoutManager characterRangeForGlyphRange:truncatedGlyphRange actualGlyphRange:NULL];
                         }
                     } else {
                         _truncationRange = (NSRange){0, focusedRange.location};
-                        [self.layoutManager invalidateGlyphsForCharacterRange:(NSRange){ 0, length } changeInLength:0 actualCharacterRange:NULL];
-                        [self.layoutManager ensureLayoutForCharacterRange:(NSRange){ 0, length }];
-                        NSUInteger location = [self.layoutManager glyphIndexForCharacterAtIndex:focusedRange.location];
-                        tailTruncatedCharacterRange = [self.layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:location];
+                        [self invalidateGlyphMappings];
+                        [self forceLayout];
+                        NSUInteger focusedLocation = [self.layoutManager glyphIndexForCharacterAtIndex:focusedRange.location];
+                        tailTruncatedCharacterRange = [self.layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:focusedLocation];
                     }
                     
                     // Make sure the tail truncation range is still right after the focused range
                     if (NSMaxRange(focusedRange) != tailTruncatedCharacterRange.location) {
                         _forceTailTruncationRange = true;
-                        [self.layoutManager invalidateGlyphsForCharacterRange:(NSRange){ 0, length } changeInLength:0 actualCharacterRange:NULL];
+                        [self invalidateGlyphMappings];
                     }
                 }
                 
@@ -170,6 +168,18 @@
         _textContainer.lineBreakMode = NSLineBreakByTruncatingTail;
     }
     [_textStorage appendAttributedString:contents];
+}
+
+#pragma mark - Layout Invalidation
+
+- (void)invalidateGlyphMappings
+{
+    [self.layoutManager invalidateGlyphsForCharacterRange:(NSRange){0, self.textStorage.length } changeInLength:0 actualCharacterRange:NULL];
+}
+
+- (void)forceLayout
+{
+    [self.layoutManager ensureLayoutForCharacterRange:(NSRange){ 0, self.textStorage.length }];
 }
 
 #pragma mark - NSLayoutManagerDelegate
